@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Bot, Mail, MessageSquare, Phone, Volume2 } from 'lucide-react';
 import BlandConfig from './integrations/BlandConfig';
+import OpenAIConfig from './integrations/OpenAIConfig';
 import { integrationService } from '../../lib/database';
 
 const IntegrationsPage: React.FC = () => {
-  const [activeIntegration, setActiveIntegration] = useState<string>('bland');
+  const [activeIntegration, setActiveIntegration] = useState<string>('openai');
   const [credentials, setCredentials] = useState<Record<string, Record<string, string>>>({
     bland: {
       apiKey: '',
@@ -14,6 +15,9 @@ const IntegrationsPage: React.FC = () => {
       voice: 'nat',
       maxDuration: '300',
       record: 'false'
+    },
+    openai: {
+      apiKey: ''
     },
     synthflow: {
       apiKey: '',
@@ -27,10 +31,6 @@ const IntegrationsPage: React.FC = () => {
     sendgrid: {
       apiKey: '',
       fromEmail: ''
-    },
-    openai: {
-      apiKey: '',
-      model: 'gpt-4'
     }
   });
   const [status, setStatus] = useState<'idle' | 'pending' | 'success' | 'error'>('idle');
@@ -113,6 +113,22 @@ const IntegrationsPage: React.FC = () => {
               }));
             }}
             onTestConnection={handleTestConnection}
+            onSaveSettings={handleSaveSettings}
+            status={status}
+            message={message}
+            onLogApiCall={logApiCall}
+          />
+        );
+      case 'openai':
+        return (
+          <OpenAIConfig
+            credentials={credentials.openai}
+            onUpdateCredentials={(newCreds) => {
+              setCredentials(prev => ({
+                ...prev,
+                openai: newCreds
+              }));
+            }}
             onSaveSettings={handleSaveSettings}
             status={status}
             message={message}

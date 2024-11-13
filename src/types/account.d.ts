@@ -2,7 +2,9 @@ export interface Account {
   id: string;
   account_number: string;
   original_account_number?: string;
-  debtor_name: string;
+  debtor_first_name?: string;
+  debtor_middle_name?: string;
+  debtor_last_name?: string;
   address?: string;
   city?: string;
   state?: string;

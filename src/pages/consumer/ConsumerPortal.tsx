@@ -11,6 +11,8 @@ interface ConsumerPortalProps {
 interface AccountMatch {
   account_id: string;
   accounts: {
+    id: string;
+    account_number: string;
     debtor_name: string;
     ssn: string;
   };
@@ -49,6 +51,7 @@ const ConsumerPortal: React.FC<ConsumerPortalProps> = ({ isDemo = false }) => {
               account_id,
               accounts (
                 id,
+                account_number,
                 debtor_name,
                 ssn
               )
@@ -58,12 +61,19 @@ const ConsumerPortal: React.FC<ConsumerPortalProps> = ({ isDemo = false }) => {
           if (error) throw error;
 
           if (data && data.length > 0) {
-            const matches = data.filter(item => item.accounts);
-            setAccountMatches(matches);
+            // Deduplicate accounts by account_number
+            const uniqueAccounts = data.reduce((acc: AccountMatch[], curr: AccountMatch) => {
+              if (!acc.find(item => item.accounts?.account_number === curr.accounts?.account_number)) {
+                acc.push(curr);
+              }
+              return acc;
+            }, []);
+
+            setAccountMatches(uniqueAccounts);
             
-            // If only one match, auto-select it
-            if (matches.length === 1) {
-              setSelectedAccountId(matches[0].account_id);
+            // If only one unique account, auto-select it
+            if (uniqueAccounts.length === 1) {
+              setSelectedAccountId(uniqueAccounts[0].account_id);
             }
           }
         } catch (err) {

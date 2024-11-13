@@ -18,14 +18,6 @@ const AccountView: React.FC<AccountViewProps> = ({ isDemo = false, accountData }
   const [error, setError] = useState('');
   const [isPaymentPlan, setIsPaymentPlan] = useState(false);
 
-  if (!accountData) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-white to-blue-50 flex items-center justify-center">
-        <div className="text-red-500">Account data not found</div>
-      </div>
-    );
-  }
-
   const paymentOptions = [
     {
       type: 'settlement',
@@ -84,10 +76,26 @@ const AccountView: React.FC<AccountViewProps> = ({ isDemo = false, accountData }
 
   const handlePaymentSubmit = async (paymentData: any) => {
     try {
-      await paymentsService.createPayment(accountData.id, paymentData);
+      const payment = {
+        account_id: accountData.id,
+        amount: paymentData.amount,
+        payment_type: paymentData.type,
+        payment_method: paymentData.type === 'card' ? {
+          card: paymentData.card
+        } : {
+          check: paymentData.check
+        },
+        post_date: paymentData.postDate?.toISOString(),
+        monthly_payment: paymentData.monthlyPayment
+      };
+
+      await paymentsService.createPayment(payment);
+      
       setShowPaymentModal(false);
       setPaymentSuccess(true);
-      alert('The details of your arrangement will be sent via email shortly. Please reply or click chat on our website if you have any questions.');
+      
+      // Hide success message after 5 seconds
+      setTimeout(() => setPaymentSuccess(false), 5000);
     } catch (error) {
       console.error('Payment failed:', error);
       setError('Failed to process payment. Please try again.');
@@ -101,6 +109,12 @@ const AccountView: React.FC<AccountViewProps> = ({ isDemo = false, accountData }
       handleMakePayment(accountData?.current_balance * 0.6 || 0, false);
     }
   };
+
+  if (!accountData) {
+    return <div className="min-h-screen bg-gradient-to-b from-white to-blue-50 flex items-center justify-center">
+      <div className="text-red-500">Account data not found</div>
+    </div>;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 via-blue-900 to-gray-900">
@@ -291,10 +305,19 @@ const AccountView: React.FC<AccountViewProps> = ({ isDemo = false, accountData }
           isOpen={showPaymentModal}
           onClose={() => setShowPaymentModal(false)}
           amount={selectedAmount}
-          accountId={accountData.id}
           onSubmit={handlePaymentSubmit}
           isPaymentPlan={isPaymentPlan}
         />
+      )}
+
+      {/* Success Message */}
+      {paymentSuccess && (
+        <div className="fixed bottom-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg">
+          <div className="flex items-center">
+            <Check className="h-5 w-5 mr-2" />
+            The details of your arrangement will be sent via email shortly. Please reply or click chat on our website if you have any questions.
+          </div>
+        </div>
       )}
     </div>
   );

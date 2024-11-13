@@ -1,224 +1,169 @@
-import React, { useState } from 'react';
-import { format } from 'date-fns';
-import {
-  Search,
-  Filter,
-  ChevronDown,
-  ChevronRight,
-  FileText,
-  Phone,
-  Mail,
-  DollarSign,
-  Calendar,
-  MoreVertical,
-} from 'lucide-react';
-import { Card, Title, Text } from '@tremor/react';
-import { DebtAccount } from '../../types/account';
+import React, { useState, useEffect } from 'react';
+import { Search, Building2 } from 'lucide-react';
+import { PersonalDetails } from './crm/PersonalDetails';
+import { AccountDetails } from './crm/AccountDetails';
+import { PhoneNumbers } from './crm/PhoneNumbers';
+import { Notes } from './crm/Notes';
+import { Account, PhoneNumber, Note } from './crm/types';
+import { supabase } from '../../lib/supabase';
 
-// Sample data for development
-const sampleBatches = [
-  {
-    id: 'batch-1',
-    uploadDate: '2024-03-15T10:30:00Z',
-    fileName: 'march_accounts.csv',
-    accountCount: 156,
-    totalValue: 234500,
-    accounts: Array(156).fill(null).map((_, i) => ({
-      id: `acc-${i}`,
-      debtorName: `John Doe ${i}`,
-      accountNumber: `ACC-${1000 + i}`,
-      debtorPhone: '(555) 555-5555',
-      debtorEmail: 'john@example.com',
-      originalAmount: 1500,
-      currentBalance: 1500,
-      status: ['new', 'in_progress', 'paid'][Math.floor(Math.random() * 3)],
-      dateOfService: '2024-01-15',
-      creditorName: 'ABC Hospital',
-      createdAt: '2024-03-15T10:30:00Z',
-      updatedAt: '2024-03-15T10:30:00Z',
-    })),
-  },
-  // Add more batches as needed
-];
-
-const AccountsPage: React.FC = () => {
-  const [expandedBatches, setExpandedBatches] = useState<string[]>([]);
+const AccountsPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState<string>('all');
-  const [selectedAccount, setSelectedAccount] = useState<DebtAccount | null>(null);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [hasSearched, setHasSearched] = useState(false);
 
-  const toggleBatch = (batchId: string) => {
-    setExpandedBatches(prev =>
-      prev.includes(batchId)
-        ? prev.filter(id => id !== batchId)
-        : [...prev, batchId]
+  const fetchAccounts = async (searchTerm: string) => {
+    if (!searchTerm.trim()) {
+      setAccounts([]);
+      setSelectedAccount(null);
+      setHasSearched(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError('');
+      setHasSearched(true);
+
+      let query = supabase
+        .from('accounts')
+        .select(`
+          *,
+          client:clients(name)
+        `);
+
+      // If not admin, only show accounts for the user's client
+      if (!isAdmin) {
+        const { data: userResponse } = await supabase.auth.getUser();
+        if (userResponse?.user?.email) {
+          const { data: clientData } = await supabase
+            .from('clients')
+            .select('id')
+            .eq('email', userResponse.user.email)
+            .single();
+
+          if (clientData?.id) {
+            query = query.eq('client_id', clientData.id);
+          }
+        }
+      }
+
+      // Add search filters
+      const searchLower = searchTerm.toLowerCase();
+      query = query.or(`
+        account_number.ilike.%${searchLower}%,
+        debtor_name.ilike.%${searchLower}%,
+        ssn.ilike.%${searchLower}%,
+        id.in.(
+          select account_id from phone_numbers 
+          where number.ilike.%${searchLower}%
+        )
+      `);
+
+      const { data, error: fetchError } = await query
+        .order('created_at', { ascending: false });
+
+      if (fetchError) throw fetchError;
+      
+      setAccounts(data || []);
+      if (data && data.length > 0) {
+        setSelectedAccount(data[0]);
+      } else {
+        setSelectedAccount(null);
+      }
+    } catch (err) {
+      console.error('Error fetching accounts:', err);
+      setError('Failed to load accounts');
+      setAccounts([]);
+      setSelectedAccount(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSearch = (term: string) => {
+    setSearchTerm(term);
+    fetchAccounts(term);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+      </div>
     );
-  };
-
-  const getStatusColor = (status: string) => {
-    const colors = {
-      new: 'bg-blue-500/10 text-blue-500',
-      in_progress: 'bg-yellow-500/10 text-yellow-500',
-      paid: 'bg-green-500/10 text-green-500',
-      settled: 'bg-purple-500/10 text-purple-500',
-      uncollectible: 'bg-red-500/10 text-red-500',
-    };
-    return colors[status as keyof typeof colors] || 'bg-gray-500/10 text-gray-500';
-  };
+  }
 
   return (
     <div className="space-y-6">
+      {/* Search Bar */}
       <div className="flex justify-between items-center">
-        <h2 className="text-3xl font-bold text-white">Accounts</h2>
-        <div className="flex gap-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search accounts..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 pr-4 py-2 bg-gray-800/50 text-white rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <div className="relative">
-            <select
-              value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
-              className="pl-4 pr-10 py-2 bg-gray-800/50 text-white rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
-            >
-              <option value="all">All Status</option>
-              <option value="new">New</option>
-              <option value="in_progress">In Progress</option>
-              <option value="paid">Paid</option>
-              <option value="settled">Settled</option>
-              <option value="uncollectible">Uncollectible</option>
-            </select>
-            <Filter className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-          </div>
+        <div className="flex items-center space-x-4">
+          <h2 className="text-3xl font-bold text-white">CRM</h2>
+          {isAdmin && selectedAccount && (
+            <div className="flex items-center bg-blue-500/10 text-blue-400 px-4 py-2 rounded-lg">
+              <Building2 className="h-5 w-5 mr-2" />
+              <span>{selectedAccount.client?.name || 'Unassigned'}</span>
+            </div>
+          )}
+        </div>
+        <div className="relative flex-1 max-w-xl">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search by phone, SSN, or account number..."
+            value={searchTerm}
+            onChange={(e) => handleSearch(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 bg-gray-800/50 text-white rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            autoComplete="off"
+            data-lpignore="true"
+            spellCheck="false"
+            autoCapitalize="off"
+            autoCorrect="off"
+          />
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6">
-        {sampleBatches.map((batch) => (
-          <Card key={batch.id} className="bg-gray-800/50 border-gray-700">
-            <div
-              className="flex items-center justify-between cursor-pointer"
-              onClick={() => toggleBatch(batch.id)}
-            >
-              <div className="flex items-center space-x-4">
-                {expandedBatches.includes(batch.id) ? (
-                  <ChevronDown className="h-5 w-5 text-gray-400" />
-                ) : (
-                  <ChevronRight className="h-5 w-5 text-gray-400" />
-                )}
-                <FileText className="h-5 w-5 text-blue-500" />
-                <div>
-                  <Title className="text-white">{batch.fileName}</Title>
-                  <Text className="text-gray-400">
-                    Uploaded {format(new Date(batch.uploadDate), 'MMM d, yyyy h:mm a')}
-                  </Text>
-                </div>
-              </div>
-              <div className="flex items-center space-x-6">
-                <div className="text-right">
-                  <Text className="text-gray-400">Accounts</Text>
-                  <Title className="text-white">{batch.accountCount}</Title>
-                </div>
-                <div className="text-right">
-                  <Text className="text-gray-400">Total Value</Text>
-                  <Title className="text-white">
-                    ${batch.totalValue.toLocaleString()}
-                  </Title>
-                </div>
-              </div>
+      {error && (
+        <div className="bg-red-500/10 text-red-400 px-4 py-3 rounded-lg">
+          {error}
+        </div>
+      )}
+
+      {!hasSearched ? (
+        <div className="text-center text-gray-400 py-8">
+          Enter a search term to find accounts
+        </div>
+      ) : selectedAccount ? (
+        <>
+          {/* Account Details Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div key="personal-details">
+              <PersonalDetails account={selectedAccount} onUpdate={setSelectedAccount} />
             </div>
+            <div key="account-details">
+              <AccountDetails account={selectedAccount} onUpdate={setSelectedAccount} />
+            </div>
+          </div>
 
-            {expandedBatches.includes(batch.id) && (
-              <div className="mt-6">
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="text-left border-b border-gray-700">
-                        <th className="pb-3 text-gray-400 font-medium">Account</th>
-                        <th className="pb-3 text-gray-400 font-medium">Contact</th>
-                        <th className="pb-3 text-gray-400 font-medium">Balance</th>
-                        <th className="pb-3 text-gray-400 font-medium">Status</th>
-                        <th className="pb-3 text-gray-400 font-medium">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-700">
-                      {batch.accounts.slice(0, 10).map((account) => (
-                        <tr
-                          key={account.id}
-                          className="hover:bg-gray-700/30 cursor-pointer"
-                          onClick={() => setSelectedAccount(account)}
-                        >
-                          <td className="py-3">
-                            <div>
-                              <div className="text-white font-medium">
-                                {account.debtorName}
-                              </div>
-                              <div className="text-gray-400 text-sm">
-                                {account.accountNumber}
-                              </div>
-                            </div>
-                          </td>
-                          <td className="py-3">
-                            <div className="flex items-center space-x-2 text-gray-400">
-                              <Phone className="h-4 w-4" />
-                              <span>{account.debtorPhone}</span>
-                            </div>
-                            <div className="flex items-center space-x-2 text-gray-400">
-                              <Mail className="h-4 w-4" />
-                              <span>{account.debtorEmail}</span>
-                            </div>
-                          </td>
-                          <td className="py-3">
-                            <div className="flex items-center space-x-2">
-                              <DollarSign className="h-4 w-4 text-green-500" />
-                              <span className="text-white">
-                                ${account.currentBalance.toLocaleString()}
-                              </span>
-                            </div>
-                            <div className="flex items-center space-x-2 text-gray-400 text-sm">
-                              <Calendar className="h-4 w-4" />
-                              <span>{account.dateOfService}</span>
-                            </div>
-                          </td>
-                          <td className="py-3">
-                            <span
-                              className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                                account.status
-                              )}`}
-                            >
-                              {account.status.replace('_', ' ')}
-                            </span>
-                          </td>
-                          <td className="py-3">
-                            <button className="p-1 hover:bg-gray-700 rounded-lg transition-colors">
-                              <MoreVertical className="h-4 w-4 text-gray-400" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                {batch.accounts.length > 10 && (
-                  <div className="mt-4 text-center">
-                    <button className="text-blue-400 hover:text-blue-300">
-                      View all {batch.accounts.length} accounts
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-          </Card>
-        ))}
-      </div>
+          {/* Phone Numbers */}
+          <div key="phone-numbers">
+            <PhoneNumbers account={selectedAccount} onUpdate={setSelectedAccount} />
+          </div>
 
-      {/* Account Detail Modal would go here */}
+          {/* Notes */}
+          <div key="notes">
+            <Notes account={selectedAccount} onUpdate={setSelectedAccount} />
+          </div>
+        </>
+      ) : (
+        <div className="text-center text-gray-400 py-8">
+          No accounts found matching your search
+        </div>
+      )}
     </div>
   );
 };

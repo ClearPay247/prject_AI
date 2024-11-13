@@ -3,6 +3,9 @@ export interface Account {
   account_number: string;
   original_account_number?: string;
   debtor_name: string;
+  debtor_first_name?: string;
+  debtor_middle_name?: string;
+  debtor_last_name?: string;
   address?: string;
   city?: string;
   state?: string;
@@ -10,13 +13,18 @@ export interface Account {
   ssn?: string;
   date_of_birth?: string;
   email?: string;
-  current_balance?: number | null;
+  current_balance?: number;
   original_creditor?: string;
-  account_status?: string;
-  add_date?: string;
+  status: string;
+  add_date: string;
   add_notes?: string;
-  created_at?: string;
-  updated_at?: string;
+  created_at: string;
+  updated_at: string;
+  phone_numbers?: PhoneNumber[];
+  important_notes?: string;
+  open_date?: string;
+  charge_off_date?: string;
+  credit_score?: number;
 }
 
 export interface PhoneNumber {
@@ -24,32 +32,20 @@ export interface PhoneNumber {
   account_id: string;
   number: string;
   status: 'good' | 'bad' | 'unknown';
-  created_at?: string;
-  updated_at?: string;
-}
-
-export interface Payment {
-  id: string;
-  account_id: string;
-  amount: number;
-  payment_type: 'card' | 'check';
-  payment_method: {
-    card?: {
-      number: string;
-      exp_month: string;
-      exp_year: string;
-      cvv: string;
-      name: string;
-    };
-    check?: {
-      routing_number: string;
-      account_number: string;
-      account_type: 'checking' | 'savings';
-      name: string;
-    };
-  };
-  status: 'pending' | 'processed' | 'declined';
-  post_date?: string;
+  last_called?: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface CallRecord {
+  id: string;
+  accountId: string;
+  collectorId: string;
+  startTime: string;
+  duration: number;
+  status: 'completed' | 'no_answer' | 'voicemail' | 'failed';
+  recording?: string;
+  summary: string;
+  nextActionDate: string;
+  nextAction: string;
 }

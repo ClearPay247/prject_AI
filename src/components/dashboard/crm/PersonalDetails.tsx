@@ -15,7 +15,7 @@ export const PersonalDetails: React.FC<PersonalDetailsProps> = ({ account, onUpd
           <label className="block text-sm font-medium text-gray-300 mb-2">First Name</label>
           <input
             type="text"
-            value={account.firstName}
+            value={account.firstName || ''}
             onChange={(e) => onUpdate({ ...account, firstName: e.target.value })}
             className="w-full bg-gray-900/50 text-white rounded-lg px-4 py-2 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
             autoComplete="off"
@@ -26,7 +26,7 @@ export const PersonalDetails: React.FC<PersonalDetailsProps> = ({ account, onUpd
           <label className="block text-sm font-medium text-gray-300 mb-2">Last Name</label>
           <input
             type="text"
-            value={account.lastName}
+            value={account.lastName || ''}
             onChange={(e) => onUpdate({ ...account, lastName: e.target.value })}
             className="w-full bg-gray-900/50 text-white rounded-lg px-4 py-2 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
             autoComplete="off"
@@ -39,7 +39,7 @@ export const PersonalDetails: React.FC<PersonalDetailsProps> = ({ account, onUpd
         <label className="block text-sm font-medium text-gray-300 mb-2">Address</label>
         <input
           type="text"
-          value={account.address}
+          value={account.address || ''}
           onChange={(e) => onUpdate({ ...account, address: e.target.value })}
           className="w-full bg-gray-900/50 text-white rounded-lg px-4 py-2 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
           autoComplete="off"
@@ -52,7 +52,7 @@ export const PersonalDetails: React.FC<PersonalDetailsProps> = ({ account, onUpd
           <label className="block text-sm font-medium text-gray-300 mb-2">City</label>
           <input
             type="text"
-            value={account.city}
+            value={account.city || ''}
             onChange={(e) => onUpdate({ ...account, city: e.target.value })}
             className="w-full bg-gray-900/50 text-white rounded-lg px-4 py-2 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
             autoComplete="off"
@@ -63,7 +63,7 @@ export const PersonalDetails: React.FC<PersonalDetailsProps> = ({ account, onUpd
           <label className="block text-sm font-medium text-gray-300 mb-2">State</label>
           <input
             type="text"
-            value={account.state}
+            value={account.state || ''}
             onChange={(e) => onUpdate({ ...account, state: e.target.value })}
             className="w-full bg-gray-900/50 text-white rounded-lg px-4 py-2 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
             autoComplete="off"
@@ -71,11 +71,11 @@ export const PersonalDetails: React.FC<PersonalDetailsProps> = ({ account, onUpd
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">Zip Code</label>
+          <label className="block text-sm font-medium text-gray-300 mb-2">ZIP Code</label>
           <input
             type="text"
-            value={account.zip_code}
-            onChange={(e) => onUpdate({ ...account, zip_code: e.target.value })}
+            value={account.zipCode || ''}
+            onChange={(e) => onUpdate({ ...account, zipCode: e.target.value })}
             className="w-full bg-gray-900/50 text-white rounded-lg px-4 py-2 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
             autoComplete="off"
             data-lpignore="true"
@@ -88,7 +88,7 @@ export const PersonalDetails: React.FC<PersonalDetailsProps> = ({ account, onUpd
           <label className="block text-sm font-medium text-gray-300 mb-2">SSN</label>
           <input
             type="text"
-            value={account.ssn}
+            value={account.ssn || ''}
             onChange={(e) => onUpdate({ ...account, ssn: e.target.value })}
             className="w-full bg-gray-900/50 text-white rounded-lg px-4 py-2 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
             autoComplete="off"
@@ -99,8 +99,8 @@ export const PersonalDetails: React.FC<PersonalDetailsProps> = ({ account, onUpd
           <label className="block text-sm font-medium text-gray-300 mb-2">Date of Birth</label>
           <input
             type="date"
-            value={account.date_of_birth}
-            onChange={(e) => onUpdate({ ...account, date_of_birth: e.target.value })}
+            value={account.dob || ''}
+            onChange={(e) => onUpdate({ ...account, dob: e.target.value })}
             className="w-full bg-gray-900/50 text-white rounded-lg px-4 py-2 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
             autoComplete="off"
             data-lpignore="true"
@@ -112,7 +112,7 @@ export const PersonalDetails: React.FC<PersonalDetailsProps> = ({ account, onUpd
         <label className="block text-sm font-medium text-gray-300 mb-2">Email</label>
         <input
           type="email"
-          value={account.email}
+          value={account.email || ''}
           onChange={(e) => onUpdate({ ...account, email: e.target.value })}
           className="w-full bg-gray-900/50 text-white rounded-lg px-4 py-2 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
           autoComplete="off"

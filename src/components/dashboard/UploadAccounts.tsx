@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Upload, FileText, AlertCircle, Check, Download, ChevronRight, X } from 'lucide-react';
+import { Upload, AlertCircle } from 'lucide-react';
 import { accountService } from '../../lib/database';
 import Papa from 'papaparse';
 import BatchImportModal from './BatchImportModal';
@@ -9,7 +9,7 @@ interface ImportResults {
   total: number;
   successful: number;
   failed: number;
-  errors: string[];
+  errors: Array<{ row: number; error: string }>;
 }
 
 const UploadAccounts: React.FC = () => {
@@ -25,17 +25,17 @@ const UploadAccounts: React.FC = () => {
     if (!file) return;
 
     try {
-      const text = await file.text();
-      Papa.parse(text, {
+      Papa.parse(file, {
         header: true,
         complete: (results) => {
-          setCsvData(results.data);
           if (results.data.length > 0) {
+            setCsvData(results.data);
             const fields = Object.keys(results.data[0]);
             setCsvFields(fields);
             setShowMapping(true);
           }
         },
+        skipEmptyLines: true,
         error: (error) => {
           setError(`Failed to parse CSV: ${error.message}`);
         }
@@ -64,7 +64,7 @@ const UploadAccounts: React.FC = () => {
         const account: any = {};
         const phoneNumbers: string[] = [];
 
-        Object.entries(mappings).forEach(([dbField, csvField]) => {
+        Object.entries(mappings).forEach(([csvField, dbField]) => {
           if (dbField === 'phone_number') {
             if (row[csvField]) phoneNumbers.push(row[csvField]);
           } else {
@@ -92,65 +92,26 @@ const UploadAccounts: React.FC = () => {
         errors: []
       });
 
-      // Close the mapping modal after successful import
-      setShowMapping(false);
-      
-      // Clear the data
       setCsvData([]);
       setCsvFields([]);
+      setShowMapping(false);
     } catch (err) {
       console.error('Failed to batch import accounts:', err);
-      setError('Failed to import accounts. Please check the console for details.');
       setImportResults({
         total: csvData.length,
         successful: 0,
         failed: csvData.length,
-        errors: [err instanceof Error ? err.message : String(err)]
+        errors: [{ row: 0, error: err instanceof Error ? err.message : String(err) }]
       });
     } finally {
       setImporting(false);
     }
   };
 
-  const downloadTemplate = () => {
-    const headers = [
-      'Debtor Name',
-      'Account Number',
-      'Original Creditor',
-      'Current Balance',
-      'Phone Number',
-      'Email',
-      'SSN',
-      'Date of Birth',
-      'Address',
-      'City',
-      'State',
-      'ZIP',
-      'Notes'
-    ].join(',');
-
-    const blob = new Blob([headers], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'accounts_template.csv';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
-  };
-
   return (
     <div className="max-w-4xl mx-auto">
       <div className="flex justify-between items-center mb-8">
         <h2 className="text-3xl font-bold text-white">Import Accounts</h2>
-        <button
-          onClick={downloadTemplate}
-          className="flex items-center bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
-        >
-          <Download className="h-5 w-5 mr-2" />
-          Download Template
-        </button>
       </div>
 
       <div className="bg-gray-800/50 rounded-lg p-6">
@@ -178,6 +139,7 @@ const UploadAccounts: React.FC = () => {
           onClose={() => setShowMapping(false)}
           onConfirm={handleImport}
           headers={csvFields}
+          csvData={csvData}
         />
 
         {importResults && (
@@ -199,7 +161,7 @@ const UploadAccounts: React.FC = () => {
                     <p className="text-sm text-gray-400">Errors:</p>
                     <ul className="list-disc list-inside text-red-400 text-sm">
                       {importResults.errors.map((error, index) => (
-                        <li key={index}>{error}</li>
+                        <li key={index}>Row {error.row + 1}: {error.error}</li>
                       ))}
                     </ul>
                   </div>

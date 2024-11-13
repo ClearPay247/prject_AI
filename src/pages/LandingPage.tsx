@@ -31,16 +31,16 @@ const LandingPage: React.FC = () => {
     setError('');
     setSearching(true);
     
-    const cleanPhone = phone.replace(/\D/g, '');
-    
-    if (cleanPhone.length !== 10) {
-      setError('Please enter a valid 10-digit phone number');
-      setSearching(false);
-      return;
-    }
-
     try {
-      // Create array of possible phone number formats to check
+      const cleanPhone = phone.replace(/\D/g, '');
+      
+      if (cleanPhone.length !== 10) {
+        setError('Please enter a valid 10-digit phone number');
+        setSearching(false);
+        return;
+      }
+
+      // Create array of possible phone number formats
       const phoneFormats = [
         cleanPhone,                    // Without country code
         `1${cleanPhone}`,             // With country code
@@ -50,13 +50,36 @@ const LandingPage: React.FC = () => {
 
       const { data, error } = await supabase
         .from('phone_numbers')
-        .select('number')
-        .or(phoneFormats.map(p => `number.eq.${p}`).join(','));
+        .select(`
+          account_id,
+          accounts (
+            id,
+            account_number,
+            debtor_name,
+            ssn
+          )
+        `)
+        .or(phoneFormats.map(p => `number.ilike.%${p}`).join(','));
 
       if (error) throw error;
 
       if (data && data.length > 0) {
-        navigate(`/consumer/verify?phone=${cleanPhone}`);
+        // Deduplicate accounts by account_number
+        const uniqueAccounts = data.reduce((acc: any[], curr: any) => {
+          if (!acc.find(item => item.accounts?.account_number === curr.accounts?.account_number)) {
+            acc.push(curr);
+          }
+          return acc;
+        }, []);
+
+        if (uniqueAccounts.length === 1) {
+          // Single account found - redirect to verification
+          navigate(`/consumer/verify?phone=${cleanPhone}`);
+        } else {
+          // Multiple unique accounts found - redirect with account list
+          const accountIds = uniqueAccounts.map(a => a.accounts?.account_number).join(',');
+          navigate(`/consumer/verify?phone=${cleanPhone}&accounts=${accountIds}`);
+        }
       } else {
         setError('Please enter the phone number you were contacted at.');
       }
