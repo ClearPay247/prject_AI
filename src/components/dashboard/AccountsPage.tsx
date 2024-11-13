@@ -1,115 +1,168 @@
-import React, { useState, useEffect } from 'react';
-import { Search, Building2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { Search, Building2, Database, Bot, AlertCircle } from 'lucide-react';
 import { PersonalDetails } from './crm/PersonalDetails';
 import { AccountDetails } from './crm/AccountDetails';
 import { PhoneNumbers } from './crm/PhoneNumbers';
 import { Notes } from './crm/Notes';
-import { Account, PhoneNumber, Note } from './crm/types';
+import { Account } from './crm/types';
 import { supabase } from '../../lib/supabase';
 
 const AccountsPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [searchResults, setSearchResults] = useState<Account[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [hasSearched, setHasSearched] = useState(false);
 
-  const fetchAccounts = async (searchTerm: string) => {
-    if (!searchTerm.trim()) {
-      setAccounts([]);
+  const handleSearch = async (value: string) => {
+    setSearchTerm(value);
+    if (!value.trim()) {
       setSelectedAccount(null);
+      setSearchResults([]);
       setHasSearched(false);
       return;
     }
 
+    setLoading(true);
+    setError('');
+    setHasSearched(true);
+    setSelectedAccount(null);
+
     try {
-      setLoading(true);
-      setError('');
-      setHasSearched(true);
+      // Clean the search term to handle different formats
+      const cleanedSearch = value.replace(/\D/g, '');
+      let accounts: any[] = [];
 
-      let query = supabase
-        .from('accounts')
-        .select(`
-          *,
-          client:clients(name)
-        `);
+      // If it looks like a phone number (7+ digits), search phone_numbers first
+      if (cleanedSearch.length >= 7) {
+        const { data: phoneData, error: phoneError } = await supabase
+          .from('phone_numbers')
+          .select(`
+            account_id,
+            accounts (
+              id,
+              account_number,
+              original_account_number,
+              debtor_name,
+              debtor_first_name,
+              debtor_middle_name,
+              debtor_last_name,
+              address,
+              city,
+              state,
+              zip_code,
+              ssn,
+              date_of_birth,
+              email,
+              current_balance,
+              original_creditor,
+              status,
+              open_date,
+              important_notes,
+              client:clients (
+                name
+              ),
+              phone_numbers (
+                id,
+                number,
+                status
+              )
+            )
+          `)
+          .ilike('number', `%${cleanedSearch}%`);
 
-      // If not admin, only show accounts for the user's client
-      if (!isAdmin) {
-        const { data: userResponse } = await supabase.auth.getUser();
-        if (userResponse?.user?.email) {
-          const { data: clientData } = await supabase
-            .from('clients')
-            .select('id')
-            .eq('email', userResponse.user.email)
-            .single();
+        if (phoneError) throw phoneError;
 
-          if (clientData?.id) {
-            query = query.eq('client_id', clientData.id);
-          }
+        if (phoneData) {
+          // Filter out duplicates based on account_number
+          const uniqueAccounts = new Map();
+          phoneData
+            .filter(pd => pd.accounts)
+            .forEach(pd => {
+              if (!uniqueAccounts.has(pd.accounts.account_number)) {
+                uniqueAccounts.set(pd.accounts.account_number, pd.accounts);
+              }
+            });
+          accounts = Array.from(uniqueAccounts.values());
         }
       }
 
-      // Add search filters
-      const searchLower = searchTerm.toLowerCase();
-      query = query.or(`
-        account_number.ilike.%${searchLower}%,
-        debtor_name.ilike.%${searchLower}%,
-        ssn.ilike.%${searchLower}%,
-        id.in.(
-          select account_id from phone_numbers 
-          where number.ilike.%${searchLower}%
-        )
-      `);
+      // If no results from phone search or not a phone number, search other fields
+      if (accounts.length === 0) {
+        const { data, error: searchError } = await supabase
+          .from('accounts')
+          .select(`
+            *,
+            client:clients (
+              name
+            ),
+            phone_numbers (
+              id,
+              number,
+              status
+            )
+          `)
+          .or(`account_number.ilike.%${value}%,ssn.ilike.%${value}%,debtor_name.ilike.%${value}%`)
+          .order('created_at', { ascending: false })
+          .limit(50);
 
-      const { data, error: fetchError } = await query
-        .order('created_at', { ascending: false });
+        if (searchError) throw searchError;
+        if (data) accounts = data;
+      }
 
-      if (fetchError) throw fetchError;
-      
-      setAccounts(data || []);
-      if (data && data.length > 0) {
-        setSelectedAccount(data[0]);
+      if (accounts.length > 0) {
+        const formattedAccounts = accounts.map(account => ({
+          id: account.id,
+          firstName: account.debtor_first_name || '',
+          lastName: account.debtor_last_name || '',
+          accountNumber: account.account_number,
+          clientAccountNumber: account.original_account_number,
+          originalCreditor: account.original_creditor,
+          dateOpened: account.open_date,
+          lastPaymentDate: '',
+          lastPaymentAmount: 0,
+          accountStatus: account.status,
+          accountBalance: account.current_balance || 0,
+          ssn: account.ssn,
+          dob: account.date_of_birth,
+          email: account.email,
+          address: account.address,
+          city: account.city,
+          state: account.state,
+          zipCode: account.zip_code,
+          phoneNumbers: account.phone_numbers || [],
+          notes: account.important_notes ? [{
+            id: `note-${account.id}`,
+            text: account.important_notes,
+            createdBy: 'System',
+            createdAt: new Date().toLocaleString()
+          }] : [],
+          importantNotes: account.important_notes || '',
+          client: account.client
+        }));
+
+        setSearchResults(formattedAccounts);
+        if (formattedAccounts.length === 1) {
+          setSelectedAccount(formattedAccounts[0]);
+        }
       } else {
-        setSelectedAccount(null);
+        setSearchResults([]);
+        setError('No accounts found matching your search');
       }
     } catch (err) {
-      console.error('Error fetching accounts:', err);
-      setError('Failed to load accounts');
-      setAccounts([]);
-      setSelectedAccount(null);
+      console.error('Search error:', err);
+      setError('Failed to search accounts');
+      setSearchResults([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSearch = (term: string) => {
-    setSearchTerm(term);
-    fetchAccounts(term);
-  };
-
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       {/* Search Bar */}
       <div className="flex justify-between items-center">
-        <div className="flex items-center space-x-4">
-          <h2 className="text-3xl font-bold text-white">CRM</h2>
-          {isAdmin && selectedAccount && (
-            <div className="flex items-center bg-blue-500/10 text-blue-400 px-4 py-2 rounded-lg">
-              <Building2 className="h-5 w-5 mr-2" />
-              <span>{selectedAccount.client?.name || 'Unassigned'}</span>
-            </div>
-          )}
-        </div>
         <div className="relative flex-1 max-w-xl">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
           <input
@@ -127,41 +180,78 @@ const AccountsPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
         </div>
       </div>
 
-      {error && (
-        <div className="bg-red-500/10 text-red-400 px-4 py-3 rounded-lg">
-          {error}
+      {/* Account Details Grid */}
+      {selectedAccount && (
+        <div className="space-y-6 animate-fadeIn">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <PersonalDetails account={selectedAccount} onUpdate={setSelectedAccount} />
+            <AccountDetails account={selectedAccount} onUpdate={setSelectedAccount} isAdmin={isAdmin} />
+          </div>
+
+          <PhoneNumbers account={selectedAccount} onUpdate={setSelectedAccount} />
+          <Notes account={selectedAccount} onUpdate={setSelectedAccount} />
         </div>
       )}
 
-      {!hasSearched ? (
-        <div className="text-center text-gray-400 py-8">
-          Enter a search term to find accounts
+      {/* Search Results */}
+      {!selectedAccount && hasSearched && (
+        <div className="bg-gray-800/50 rounded-lg p-6">
+          <h3 className="text-lg font-medium text-white mb-4">Search Results</h3>
+          {searchResults.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <Database className="h-16 w-16 text-gray-600 mb-4" />
+              <p className="text-gray-400 text-lg">
+                No accounts found matching your search
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {searchResults.map((account) => (
+                <button
+                  key={account.id}
+                  onClick={() => setSelectedAccount(account)}
+                  className="w-full text-left bg-gray-900/50 hover:bg-gray-700/50 p-4 rounded-lg transition-colors"
+                >
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <div className="text-white font-medium">
+                        {account.firstName} {account.lastName}
+                      </div>
+                      <div className="text-sm text-gray-400">
+                        Account: {account.accountNumber}
+                      </div>
+                      {isAdmin && account.client && (
+                        <div className="text-sm text-blue-400 mt-1">
+                          Client: {account.client.name}
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <div className="text-blue-400 font-medium">
+                        ${account.accountBalance.toLocaleString()}
+                      </div>
+                      <div className="text-sm text-gray-400">
+                        {account.phoneNumbers.length} phone numbers
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
-      ) : selectedAccount ? (
-        <>
-          {/* Account Details Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div key="personal-details">
-              <PersonalDetails account={selectedAccount} onUpdate={setSelectedAccount} />
-            </div>
-            <div key="account-details">
-              <AccountDetails account={selectedAccount} onUpdate={setSelectedAccount} />
-            </div>
-          </div>
+      )}
 
-          {/* Phone Numbers */}
-          <div key="phone-numbers">
-            <PhoneNumbers account={selectedAccount} onUpdate={setSelectedAccount} />
-          </div>
-
-          {/* Notes */}
-          <div key="notes">
-            <Notes account={selectedAccount} onUpdate={setSelectedAccount} />
-          </div>
-        </>
-      ) : (
-        <div className="text-center text-gray-400 py-8">
-          No accounts found matching your search
+      {/* Initial State */}
+      {!hasSearched && (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <Bot className="h-16 w-16 text-gray-600 mb-4" />
+          <p className="text-gray-400 text-lg">
+            Enter a search term to find accounts
+          </p>
+          <p className="text-gray-500 text-sm mt-2">
+            Search by phone number, SSN, or account number
+          </p>
         </div>
       )}
     </div>

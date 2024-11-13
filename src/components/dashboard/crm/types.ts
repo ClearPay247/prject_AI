@@ -17,8 +17,9 @@ export interface Account {
   city?: string;
   state?: string;
   zipCode?: string;
-  phoneNumbers?: PhoneNumber[];
-  notes?: Note[];
+  phoneNumbers: PhoneNumber[];
+  notes: Note[];
+  importantNotes?: string;
   client?: {
     name: string;
   };

@@ -10,6 +10,7 @@ export const PersonalDetails: React.FC<PersonalDetailsProps> = ({ account, onUpd
   return (
     <div className="bg-gray-800/50 rounded-lg p-6">
       <h3 className="text-xl font-semibold text-white mb-4">Personal Details</h3>
+      
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2">First Name</label>

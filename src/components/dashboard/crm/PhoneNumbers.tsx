@@ -43,7 +43,7 @@ export const PhoneNumbers: React.FC<PhoneNumbersProps> = ({ account, onUpdate })
     onUpdate({
       ...account,
       phoneNumbers: [
-        ...(account.phoneNumbers || []),
+        ...account.phoneNumbers,
         { id: Date.now().toString(), number: cleanNumber, status: 'unknown' }
       ]
     });
@@ -53,7 +53,7 @@ export const PhoneNumbers: React.FC<PhoneNumbersProps> = ({ account, onUpdate })
   const handlePhoneStatusChange = (id: string, status: 'good' | 'bad' | 'unknown') => {
     onUpdate({
       ...account,
-      phoneNumbers: (account.phoneNumbers || []).map(phone =>
+      phoneNumbers: account.phoneNumbers.map(phone =>
         phone.id === id ? { ...phone, status } : phone
       )
     });
@@ -89,7 +89,7 @@ export const PhoneNumbers: React.FC<PhoneNumbersProps> = ({ account, onUpdate })
               createdBy: 'System',
               createdAt: now
             },
-            ...(account.notes || [])
+            ...account.notes
           ]
         });
       } else {
@@ -106,10 +106,10 @@ export const PhoneNumbers: React.FC<PhoneNumbersProps> = ({ account, onUpdate })
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'good': return 'bg-green-500';
-      case 'bad': return 'bg-red-500';
-      case 'unknown': return 'bg-yellow-500';
-      default: return 'bg-gray-500';
+      case 'good': return 'bg-green-500/20 text-green-400 border border-green-500/30';
+      case 'bad': return 'bg-red-500/20 text-red-400 border border-red-500/30';
+      case 'unknown': return 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30';
+      default: return 'bg-gray-500/20 text-gray-400 border border-gray-500/30';
     }
   };
 
@@ -145,7 +145,7 @@ export const PhoneNumbers: React.FC<PhoneNumbersProps> = ({ account, onUpdate })
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {(account.phoneNumbers || []).map((phone) => (
+        {account.phoneNumbers?.map((phone) => (
           <div key={phone.id} className="bg-gray-900/50 rounded-lg p-4 flex items-center justify-between">
             <div className="flex items-center">
               <Phone className="h-5 w-5 text-gray-400 mr-2" />
@@ -163,7 +163,7 @@ export const PhoneNumbers: React.FC<PhoneNumbersProps> = ({ account, onUpdate })
             <select
               value={phone.status}
               onChange={(e) => handlePhoneStatusChange(phone.id, e.target.value as 'good' | 'bad' | 'unknown')}
-              className={`${getStatusColor(phone.status)} text-white rounded px-3 py-1`}
+              className={`${getStatusColor(phone.status)} rounded-lg px-3 py-1`}
             >
               <option value="good">Good</option>
               <option value="bad">Bad</option>
@@ -175,3 +175,5 @@ export const PhoneNumbers: React.FC<PhoneNumbersProps> = ({ account, onUpdate })
     </div>
   );
 };
+
+export default PhoneNumbers;

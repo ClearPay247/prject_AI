@@ -15,7 +15,7 @@ export const Notes: React.FC<NotesProps> = ({ account, onUpdate }) => {
         ...account,
         notes: [
           {
-            id: Date.now().toString(),
+            id: `note-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
             text: newNote,
             createdBy: 'User',
             createdAt: new Date().toLocaleString()
@@ -61,3 +61,5 @@ export const Notes: React.FC<NotesProps> = ({ account, onUpdate }) => {
     </div>
   );
 };
+
+export default Notes;
