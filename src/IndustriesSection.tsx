@@ -1,6 +1,6 @@
 import React from 'react';
 import { Building2, Phone, Calendar, Shield, Scale, Clock, Zap, PieChart, MessageSquare, CreditCard } from 'lucide-react';
-import { industries } from '../data/industries';
+import { industries } from './data/industries';
 
 export default function IndustriesSection() {
   return (
@@ -45,7 +45,7 @@ export default function IndustriesSection() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-12">
-          {industries.map((industry) => (
+          {industries?.map((industry) => (
             <div key={industry.category} className="bg-gray-900 rounded-lg p-6 shadow-lg">
               <div className="flex items-center mb-4">
                 <Building2 className="h-6 w-6 text-blue-500 mr-2" />

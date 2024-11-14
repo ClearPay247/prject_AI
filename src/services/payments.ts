@@ -3,7 +3,8 @@ import { encryptData, decryptData } from '../utils/encryption';
 import { Payment } from '../types/payment';
 
 export const paymentsService = {
-  async createPayment(payment: Omit<Payment, 'id' | 'created_at' | 'updated_at'>) {
+  // async createPayment(payment: Omit<Payment, 'id' | 'created_at' | 'updated_at'>) {
+    async createPayment(payment: Omit<any, 'id' | 'created_at' | 'updated_at'>) {
     try {
       // Encrypt sensitive payment details
       const sensitiveData = payment.payment_type === 'card' ? payment.payment_method.card : payment.payment_method.check;
@@ -30,7 +31,7 @@ export const paymentsService = {
     }
   },
 
-  async getPayments(): Promise<Payment[]> {
+  async getPayments(): Promise<any[]> {
     try {
       const { data, error } = await supabase
         .from('payments')
@@ -51,7 +52,7 @@ export const paymentsService = {
     }
   },
 
-  async getDecryptedPaymentDetails(payment: Payment): Promise<any> {
+  async getDecryptedPaymentDetails(payment: any): Promise<any> {
     try {
       if (!payment.payment_method) return null;
       

@@ -41,7 +41,7 @@ export interface CallRequest {
     retryDelay?: number;
     allowedTimeRanges?: {
       start: string;
-      end: string;
+      endCall: string;
       timezone: string;
     }[];
   };

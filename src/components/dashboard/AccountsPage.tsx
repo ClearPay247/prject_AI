@@ -9,8 +9,8 @@ import { supabase } from '../../lib/supabase';
 
 const AccountsPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [searchResults, setSearchResults] = useState<Account[]>([]);
-  const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [selectedAccount, setSelectedAccount] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [hasSearched, setHasSearched] = useState(false);
@@ -36,7 +36,7 @@ const AccountsPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
 
       // If it looks like a phone number (7+ digits), search phone_numbers first
       if (cleanedSearch.length >= 7) {
-        const { data: phoneData, error: phoneError } = await supabase
+        const { data, error: phoneError } = await supabase
           .from('phone_numbers')
           .select(`
             account_id,
@@ -72,6 +72,8 @@ const AccountsPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
           `)
           .ilike('number', `%${cleanedSearch}%`);
 
+          const phoneData: any = data;
+
         if (phoneError) throw phoneError;
 
         if (phoneData) {
@@ -80,8 +82,8 @@ const AccountsPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
           phoneData
             .filter(pd => pd.accounts)
             .forEach(pd => {
-              if (!uniqueAccounts.has(pd.accounts.account_number)) {
-                uniqueAccounts.set(pd.accounts.account_number, pd.accounts);
+              if (!uniqueAccounts.has(pd.accounts.accountNumber)) {
+                uniqueAccounts.set(pd.accounts.accountNumber, pd.accounts);
               }
             });
           accounts = Array.from(uniqueAccounts.values());

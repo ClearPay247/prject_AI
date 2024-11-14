@@ -3,8 +3,8 @@ import { Upload } from 'lucide-react';
 import { DropzoneProps } from 'react-dropzone';
 
 interface FileUploadProps {
-  getRootProps: (props?: any) => DropzoneProps;
-  getInputProps: () => DropzoneProps;
+  getRootProps: (props?: any) => any;
+  getInputProps: () => any;
   isDragActive: boolean;
 }
 

@@ -13,9 +13,9 @@ const fieldKeywords = {
 };
 
 // Update the findBestFieldMatch function to better handle phone numbers
-export function findBestFieldMatch(csvHeader: string, sampleValue?: string, existingMappings: Record<string, string> = {}): FieldMatch | null {
+export function findBestFieldMatch(csvHeader: string, sampleValue?: string, existingMappings: Record<string, string> = {}): any | null {
   const normalizedHeader = csvHeader.toLowerCase().trim();
-  let bestMatch: FieldMatch = { dbField: '', confidence: 0 };
+  let bestMatch: any = { dbField: '', confidence: 0 };
 
   // Clean header for matching
   const cleanHeader = normalizedHeader

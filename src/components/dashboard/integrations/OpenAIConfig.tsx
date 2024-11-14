@@ -8,7 +8,7 @@ interface OpenAIConfig {
   organization?: string;
 }
 
-const OpenAIConfig: React.FC = () => {
+const OpenAIConfig: any = () => {
   const [config, setConfig] = useState<OpenAIConfig>({
     apiKey: '',
     model: 'gpt-4',

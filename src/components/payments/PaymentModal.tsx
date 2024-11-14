@@ -11,7 +11,7 @@ interface PaymentModalProps {
   isPaymentPlan?: boolean;
 }
 
-const PaymentModal: React.FC<PaymentModalProps> = ({
+const PaymentModal: React.FC<any> = ({
   isOpen,
   onClose,
   amount,
@@ -108,7 +108,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
     };
 
     try {
-      const success = await paymentsService.addPayment(payment);
+      const success = await paymentsService.createPayment(payment);
       if (success) {
         onSubmit(payment);
         alert('The details of your arrangement will be sent via email shortly. Please reply or click chat on our website if you have any questions.');
