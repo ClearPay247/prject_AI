@@ -7,6 +7,7 @@ import ConsumerPortal from './pages/consumer/ConsumerPortal';
 import ChatWidget from './components/chat/ChatWidget';
 import { AuthData } from './types/auth';
 import { initializeDatabase } from './lib/database';
+import { supabase } from './lib/supabase';
 
 const App: React.FC = () => {
   const [authData, setAuthData] = useState<AuthData>(() => {
@@ -16,28 +17,52 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const init = async () => {
-      // Initialize database
       await initializeDatabase();
     };
 
     init();
   }, []);
 
-  const handleAuth = (email: string, password: string, rememberMe: boolean) => {
-    // Check if it's the master admin
-    const isAdmin = email === 'admin@clearpay247.com' && password === 'CP247@dm1n2024!';
-    
-    const newAuthData = { 
-      isLoggedIn: true, 
-      email, 
-      rememberMe,
-      isAdmin,
-      userId: isAdmin ? 'admin' : `user-${Date.now()}`
-    };
-    setAuthData(newAuthData);
+  const handleAuth = async (email: string, password: string, rememberMe: boolean) => {
+    try {
+      // Handle hardcoded admin login
+      if (email === 'admin@clearpay247.com' && password === 'CP247@dm1n2024!') {
+        const newAuthData: AuthData =  {
+          isLoggedIn: true,
+          email,
+          role: "site_admin",
+          userId: "admin",
+          rememberMe
+        };
+        setAuthData(newAuthData);
+        if (rememberMe) {
+          localStorage.setItem('authData', JSON.stringify(newAuthData));
+        }
+        return;
+      }
 
-    if (rememberMe) {
-      localStorage.setItem('authData', JSON.stringify(newAuthData));
+      // Handle CRM admin login
+      if (email === 'crm@clearpay247.com' && password === 'CP247crm@2024!') {
+        const newAuthData: AuthData = {
+          isLoggedIn: true,
+          email,
+          role: 'crm_admin',
+          userId: 'crm_admin',
+          rememberMe
+        };
+        setAuthData(newAuthData);
+        if (rememberMe) {
+          localStorage.setItem('authData', JSON.stringify(newAuthData));
+        }
+        return;
+      }
+
+      // For now, throw error for other logins
+      throw new Error('Invalid login credentials');
+
+    } catch (err) {
+      console.error('Authentication error:', err);
+      throw new Error('Invalid login credentials');
     }
   };
 
@@ -64,7 +89,9 @@ const App: React.FC = () => {
             authData.isLoggedIn ? (
               <DashboardLayout 
                 onLogout={handleLogout} 
-                isAdmin={authData.isAdmin}
+                isAdmin={authData.role === 'site_admin'}
+                userRole={authData.role}
+                userEmail={authData.email}
               />
             ) : (
               <Navigate to="/" replace />

@@ -6,8 +6,7 @@ const supabaseUrl = 'https://zelujzsyxycirrxrgrhe.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InplbHVqenN5eHljaXJyeHJncmhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzA5OTM5OTMsImV4cCI6MjA0NjU2OTk5M30.kPlT_zxroGhbVnG7u_xSv4ui9NOO7pHmuq-2SAUvrfQ';
 
 // Create Supabase client with enhanced configuration
-// export const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
-  export const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
+export const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,

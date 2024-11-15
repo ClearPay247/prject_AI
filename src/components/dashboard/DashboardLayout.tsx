@@ -30,9 +30,11 @@ import CallSettings from './CallSettings';
 interface DashboardLayoutProps {
   onLogout: () => void;
   isAdmin?: boolean;
+  userEmail?: string;
+  userRole?: string;
 }
 
-const DashboardLayout: React.FC<DashboardLayoutProps> = ({ onLogout, isAdmin = false }) => {
+const DashboardLayout: React.FC<DashboardLayoutProps> = ({ onLogout, isAdmin = false, userEmail = '' }) => {
   const navigate = useNavigate();
   const [isMenuCollapsed, setIsMenuCollapsed] = useState(false);
 
@@ -40,6 +42,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ onLogout, isAdmin = f
     onLogout();
     navigate('/');
   };
+
+  // Check if user is CRM admin
+  const isCrmAdmin = userEmail === 'crm@clearpay247.com';
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 to-blue-900">
@@ -71,13 +76,18 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ onLogout, isAdmin = f
 
         <nav className="mt-6 px-4">
           <div className="space-y-2">
-            <Link
-              to="/dashboard"
-              className="flex items-center px-4 py-2 text-gray-400 hover:text-white hover:bg-gray-800/50 rounded-lg transition-colors"
-            >
-              <LayoutDashboard className="h-5 w-5 mr-3" />
-              {!isMenuCollapsed && <span>Overview</span>}
-            </Link>
+            {/* Only show Overview for non-CRM admins */}
+            {!isCrmAdmin && (
+              <Link
+                to="/dashboard"
+                className="flex items-center px-4 py-2 text-gray-400 hover:text-white hover:bg-gray-800/50 rounded-lg transition-colors"
+              >
+                <LayoutDashboard className="h-5 w-5 mr-3" />
+                {!isMenuCollapsed && <span>Overview</span>}
+              </Link>
+            )}
+
+            {/* Always show CRM */}
             <Link
               to="/dashboard/crm"
               className="flex items-center px-4 py-2 text-gray-400 hover:text-white hover:bg-gray-800/50 rounded-lg transition-colors"
@@ -85,27 +95,33 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ onLogout, isAdmin = f
               <Database className="h-5 w-5 mr-3" />
               {!isMenuCollapsed && <span>CRM</span>}
             </Link>
-            <Link
-              to="/dashboard/calls"
-              className="flex items-center px-4 py-2 text-gray-400 hover:text-white hover:bg-gray-800/50 rounded-lg transition-colors"
-            >
-              <Phone className="h-5 w-5 mr-3" />
-              {!isMenuCollapsed && <span>Recent Calls</span>}
-            </Link>
-            <Link
-              to="/dashboard/payments"
-              className="flex items-center px-4 py-2 text-gray-400 hover:text-white hover:bg-gray-800/50 rounded-lg transition-colors"
-            >
-              <CreditCard className="h-5 w-5 mr-3" />
-              {!isMenuCollapsed && <span>Payments</span>}
-            </Link>
-            <Link
-              to="/dashboard/settings"
-              className="flex items-center px-4 py-2 text-gray-400 hover:text-white hover:bg-gray-800/50 rounded-lg transition-colors"
-            >
-              <Settings className="h-5 w-5 mr-3" />
-              {!isMenuCollapsed && <span>Settings</span>}
-            </Link>
+
+            {/* Only show other options for non-CRM admins */}
+            {!isCrmAdmin && (
+              <>
+                <Link
+                  to="/dashboard/calls"
+                  className="flex items-center px-4 py-2 text-gray-400 hover:text-white hover:bg-gray-800/50 rounded-lg transition-colors"
+                >
+                  <Phone className="h-5 w-5 mr-3" />
+                  {!isMenuCollapsed && <span>Recent Calls</span>}
+                </Link>
+                <Link
+                  to="/dashboard/payments"
+                  className="flex items-center px-4 py-2 text-gray-400 hover:text-white hover:bg-gray-800/50 rounded-lg transition-colors"
+                >
+                  <CreditCard className="h-5 w-5 mr-3" />
+                  {!isMenuCollapsed && <span>Payments</span>}
+                </Link>
+                <Link
+                  to="/dashboard/settings"
+                  className="flex items-center px-4 py-2 text-gray-400 hover:text-white hover:bg-gray-800/50 rounded-lg transition-colors"
+                >
+                  <Settings className="h-5 w-5 mr-3" />
+                  {!isMenuCollapsed && <span>Settings</span>}
+                </Link>
+              </>
+            )}
           </div>
 
           <div className="absolute bottom-4 left-0 right-0 px-4">
@@ -123,20 +139,29 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ onLogout, isAdmin = f
       <div className={`transition-all duration-300 ${isMenuCollapsed ? 'ml-16' : 'ml-64'}`}>
         <div className="p-8">
           <Routes>
-            <Route path="/" element={<Overview />} />
+            {/* Redirect CRM admin to /dashboard/crm by default */}
+            {isCrmAdmin ? (
+              <Route path="/" element={<AccountsPage isAdmin={true} />} />
+            ) : (
+              <Route path="/" element={<Overview />} />
+            )}
             <Route path="/crm" element={<AccountsPage isAdmin={isAdmin} />} />
-            <Route path="/calls" element={<RecentCalls />} />
-            <Route path="/payments" element={<PaymentsPage />} />
-            <Route path="/settings/*" element={
-              <Routes>
-                <Route path="/" element={<SettingsPage />} />
-                <Route path="users" element={<UsersPage />} />
-                <Route path="integrations" element={<IntegrationsPage />} />
-                <Route path="flow-designer" element={<FlowDesigner />} />
-                <Route path="call-settings" element={<CallSettings />} />
-                {isAdmin && <Route path="smartmap" element={<SmartmapPage />} />}
-              </Routes>
-            } />
+            {!isCrmAdmin && (
+              <>
+                <Route path="/calls" element={<RecentCalls />} />
+                <Route path="/payments" element={<PaymentsPage />} />
+                <Route path="/settings/*" element={
+                  <Routes>
+                    <Route path="/" element={<SettingsPage />} />
+                    <Route path="users" element={<UsersPage />} />
+                    <Route path="integrations" element={<IntegrationsPage />} />
+                    <Route path="flow-designer" element={<FlowDesigner />} />
+                    <Route path="call-settings" element={<CallSettings />} />
+                    {isAdmin && <Route path="smartmap" element={<SmartmapPage />} />}
+                  </Routes>
+                } />
+              </>
+            )}
           </Routes>
         </div>
       </div>

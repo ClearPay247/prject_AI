@@ -62,7 +62,7 @@ const ConsumerPortal: React.FC<ConsumerPortalProps> = ({ isDemo = false }) => {
 
           if (data && data.length > 0) {
             // Deduplicate accounts by account_number
-            const uniqueAccounts = data.reduce((acc: any[], curr: any) => {
+            const uniqueAccounts = data.reduce((acc: AccountMatch[], curr: AccountMatch) => {
               if (!acc.find(item => item.accounts?.account_number === curr.accounts?.account_number)) {
                 acc.push(curr);
               }

@@ -11,7 +11,7 @@ export const encryptData = (data: string): string => {
   }
 };
 
-export const decryptData = (encryptedData: any): any => {
+export const decryptData = (encryptedData: string): string => {
   try {
     const bytes = CryptoJS.AES.decrypt(encryptedData, ENCRYPTION_KEY);
     return bytes.toString(CryptoJS.enc.Utf8);

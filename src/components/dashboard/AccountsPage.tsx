@@ -1,19 +1,144 @@
-import React, { useState } from 'react';
-import { Search, Building2, Database, Bot, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, Building2, Database, Bot, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { PersonalDetails } from './crm/PersonalDetails';
 import { AccountDetails } from './crm/AccountDetails';
 import { PhoneNumbers } from './crm/PhoneNumbers';
 import { Notes } from './crm/Notes';
 import { Account } from './crm/types';
 import { supabase } from '../../lib/supabase';
+import AccountPool from './crm/AccountPool';
 
-const AccountsPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
+interface AccountsPageProps {
+  isAdmin?: boolean;
+}
+
+const AccountsPage: React.FC<AccountsPageProps> = ({ isAdmin = false }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [selectedAccount, setSelectedAccount] = useState<any | null>(null);
+  const [searchResults, setSearchResults] = useState<Account[]>([]);
+  const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [hasSearched, setHasSearched] = useState(false);
+  const [showAccountPool, setShowAccountPool] = useState(true);
+
+  // Pool state
+  const [poolAccounts, setPoolAccounts] = useState<Account[]>([]);
+  const [poolLoading, setPoolLoading] = useState(false);
+  const [poolFilters, setPoolFilters] = useState({
+    status: 'new',
+    balanceMin: '',
+    balanceMax: '',
+    limit: '50',
+    originalCreditor: ''
+  });
+
+  // Add keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!selectedAccount || poolAccounts.length === 0) return;
+
+      const currentIndex = poolAccounts.findIndex(a => a.id === selectedAccount.id);
+      if (currentIndex === -1) return;
+
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        const prevIndex = currentIndex === 0 ? poolAccounts.length - 1 : currentIndex - 1;
+        setSelectedAccount(poolAccounts[prevIndex]);
+      } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        const nextIndex = currentIndex === poolAccounts.length - 1 ? 0 : currentIndex + 1;
+        setSelectedAccount(poolAccounts[nextIndex]);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        setShowAccountPool(true);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedAccount, poolAccounts]);
+
+  const loadAccountPool = async () => {
+    setPoolLoading(true);
+    setError('');
+
+    try {
+      let query = supabase
+        .from('accounts')
+        .select(`
+          *,
+          client:clients (
+            name
+          ),
+          phone_numbers (
+            id,
+            number,
+            status
+          )
+        `)
+        .eq('status', poolFilters.status)
+        .order('created_at', { ascending: false })
+        .limit(parseInt(poolFilters.limit));
+
+      if (poolFilters.balanceMin) {
+        query = query.gte('current_balance', parseFloat(poolFilters.balanceMin));
+      }
+      if (poolFilters.balanceMax) {
+        query = query.lte('current_balance', parseFloat(poolFilters.balanceMax));
+      }
+      if (poolFilters.originalCreditor) {
+        query = query.ilike('original_creditor', `%${poolFilters.originalCreditor}%`);
+      }
+
+      const { data, error: searchError } = await query;
+
+      if (searchError) throw searchError;
+
+      if (data) {
+        const formattedAccounts = data.map(account => ({
+          id: account.id,
+          firstName: account.debtor_first_name || '',
+          lastName: account.debtor_last_name || '',
+          accountNumber: account.account_number,
+          clientAccountNumber: account.original_account_number,
+          originalCreditor: account.original_creditor,
+          dateOpened: account.open_date,
+          lastPaymentDate: '',
+          lastPaymentAmount: 0,
+          accountStatus: account.status,
+          accountBalance: account.current_balance || 0,
+          ssn: account.ssn,
+          dob: account.date_of_birth,
+          email: account.email,
+          address: account.address,
+          city: account.city,
+          state: account.state,
+          zipCode: account.zip_code,
+          phoneNumbers: account.phone_numbers || [],
+          notes: account.important_notes ? [{
+            id: `note-${account.id}`,
+            text: account.important_notes,
+            createdBy: 'System',
+            createdAt: new Date().toLocaleString()
+          }] : [],
+          importantNotes: account.important_notes || '',
+          client: account.client
+        }));
+
+        setPoolAccounts(formattedAccounts);
+        // Auto-select first account
+        if (formattedAccounts.length > 0) {
+          setSelectedAccount(formattedAccounts[0]);
+          setShowAccountPool(false);
+        }
+      }
+    } catch (err) {
+      console.error('Pool loading error:', err);
+      setError('Failed to load account pool');
+    } finally {
+      setPoolLoading(false);
+    }
+  };
 
   const handleSearch = async (value: string) => {
     setSearchTerm(value);
@@ -36,7 +161,7 @@ const AccountsPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
 
       // If it looks like a phone number (7+ digits), search phone_numbers first
       if (cleanedSearch.length >= 7) {
-        const { data, error: phoneError } = await supabase
+        const { data: phoneData, error: phoneError } = await supabase
           .from('phone_numbers')
           .select(`
             account_id,
@@ -60,9 +185,6 @@ const AccountsPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
               status,
               open_date,
               important_notes,
-              client:clients (
-                name
-              ),
               phone_numbers (
                 id,
                 number,
@@ -72,21 +194,12 @@ const AccountsPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
           `)
           .ilike('number', `%${cleanedSearch}%`);
 
-          const phoneData: any = data;
-
         if (phoneError) throw phoneError;
 
         if (phoneData) {
-          // Filter out duplicates based on account_number
-          const uniqueAccounts = new Map();
-          phoneData
-            .filter(pd => pd.accounts)
-            .forEach(pd => {
-              if (!uniqueAccounts.has(pd.accounts.accountNumber)) {
-                uniqueAccounts.set(pd.accounts.accountNumber, pd.accounts);
-              }
-            });
-          accounts = Array.from(uniqueAccounts.values());
+          accounts = phoneData
+            .filter(pd => pd.accounts) // Filter out any null accounts
+            .map(pd => pd.accounts);
         }
       }
 
@@ -96,9 +209,6 @@ const AccountsPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
           .from('accounts')
           .select(`
             *,
-            client:clients (
-              name
-            ),
             phone_numbers (
               id,
               number,
@@ -147,6 +257,7 @@ const AccountsPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
         setSearchResults(formattedAccounts);
         if (formattedAccounts.length === 1) {
           setSelectedAccount(formattedAccounts[0]);
+          setShowAccountPool(false);
         }
       } else {
         setSearchResults([]);
@@ -161,100 +272,109 @@ const AccountsPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
     }
   };
 
+  const navigateAccounts = (direction: 'prev' | 'next') => {
+    if (!selectedAccount || poolAccounts.length === 0) return;
+    
+    const currentIndex = poolAccounts.findIndex(a => a.id === selectedAccount.id);
+    if (currentIndex === -1) return;
+
+    let newIndex;
+    if (direction === 'prev') {
+      newIndex = currentIndex === 0 ? poolAccounts.length - 1 : currentIndex - 1;
+    } else {
+      newIndex = currentIndex === poolAccounts.length - 1 ? 0 : currentIndex + 1;
+    }
+
+    setSelectedAccount(poolAccounts[newIndex]);
+  };
+
+  const handleSelectAccount = (account: Account) => {
+    setSelectedAccount(account);
+    setShowAccountPool(false);
+  };
+
   return (
     <div className="space-y-6">
-      {/* Search Bar */}
-      <div className="flex justify-between items-center">
-        <div className="relative flex-1 max-w-xl">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search by phone, SSN, or account number..."
-            value={searchTerm}
-            onChange={(e) => handleSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-gray-800/50 text-white rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            autoComplete="off"
-            data-lpignore="true"
-            spellCheck="false"
-            autoCapitalize="off"
-            autoCorrect="off"
+      {showAccountPool ? (
+        <>
+          {/* Account Pool */}
+          <AccountPool
+            accounts={poolAccounts}
+            loading={poolLoading}
+            filters={poolFilters}
+            onFilterChange={setPoolFilters}
+            onLoadAccounts={loadAccountPool}
+            onSelectAccount={handleSelectAccount}
+            selectedAccount={selectedAccount}
+            error={error}
           />
-        </div>
-      </div>
 
-      {/* Account Details Grid */}
-      {selectedAccount && (
-        <div className="space-y-6 animate-fadeIn">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <PersonalDetails account={selectedAccount} onUpdate={setSelectedAccount} />
-            <AccountDetails account={selectedAccount} onUpdate={setSelectedAccount} isAdmin={isAdmin} />
+          {/* Search Bar */}
+          <div className="flex justify-between items-center">
+            <div className="relative flex-1 max-w-xl">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search by phone, SSN, or account number..."
+                value={searchTerm}
+                onChange={(e) => handleSearch(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 bg-gray-800/50 text-white rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                autoComplete="off"
+                data-lpignore="true"
+                spellCheck="false"
+                autoCapitalize="off"
+                autoCorrect="off"
+              />
+            </div>
+          </div>
+        </>
+      ) : (
+        /* Full Account View */
+        <>
+          {/* Navigation Header */}
+          <div className="flex items-center justify-between bg-gray-800/50 rounded-lg p-4 mb-6">
+            <button
+              onClick={() => setShowAccountPool(true)}
+              className="text-gray-400 hover:text-white transition-colors flex items-center"
+            >
+              <ChevronLeft className="h-5 w-5 mr-1" />
+              Back to Account Pool
+            </button>
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={() => navigateAccounts('prev')}
+                className="bg-gray-700 hover:bg-gray-600 text-white p-2 rounded-lg transition-colors"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <span className="text-gray-400">
+                {poolAccounts.findIndex(a => a.id === selectedAccount?.id) + 1} of {poolAccounts.length}
+              </span>
+              <button
+                onClick={() => navigateAccounts('next')}
+                className="bg-gray-700 hover:bg-gray-600 text-white p-2 rounded-lg transition-colors"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            </div>
           </div>
 
-          <PhoneNumbers account={selectedAccount} onUpdate={setSelectedAccount} />
-          <Notes account={selectedAccount} onUpdate={setSelectedAccount} />
-        </div>
-      )}
-
-      {/* Search Results */}
-      {!selectedAccount && hasSearched && (
-        <div className="bg-gray-800/50 rounded-lg p-6">
-          <h3 className="text-lg font-medium text-white mb-4">Search Results</h3>
-          {searchResults.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <Database className="h-16 w-16 text-gray-600 mb-4" />
-              <p className="text-gray-400 text-lg">
-                No accounts found matching your search
-              </p>
+          {/* Account Details */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div key="personal-details">
+              <PersonalDetails account={selectedAccount!} onUpdate={setSelectedAccount} />
             </div>
-          ) : (
-            <div className="space-y-2">
-              {searchResults.map((account) => (
-                <button
-                  key={account.id}
-                  onClick={() => setSelectedAccount(account)}
-                  className="w-full text-left bg-gray-900/50 hover:bg-gray-700/50 p-4 rounded-lg transition-colors"
-                >
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <div className="text-white font-medium">
-                        {account.firstName} {account.lastName}
-                      </div>
-                      <div className="text-sm text-gray-400">
-                        Account: {account.accountNumber}
-                      </div>
-                      {isAdmin && account.client && (
-                        <div className="text-sm text-blue-400 mt-1">
-                          Client: {account.client.name}
-                        </div>
-                      )}
-                    </div>
-                    <div className="text-right">
-                      <div className="text-blue-400 font-medium">
-                        ${account.accountBalance.toLocaleString()}
-                      </div>
-                      <div className="text-sm text-gray-400">
-                        {account.phoneNumbers.length} phone numbers
-                      </div>
-                    </div>
-                  </div>
-                </button>
-              ))}
+            <div key="account-details">
+              <AccountDetails account={selectedAccount!} onUpdate={setSelectedAccount} isAdmin={isAdmin} />
             </div>
-          )}
-        </div>
-      )}
-
-      {/* Initial State */}
-      {!hasSearched && (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <Bot className="h-16 w-16 text-gray-600 mb-4" />
-          <p className="text-gray-400 text-lg">
-            Enter a search term to find accounts
-          </p>
-          <p className="text-gray-500 text-sm mt-2">
-            Search by phone number, SSN, or account number
-          </p>
-        </div>
+            <div key="phone-numbers" className="md:col-span-2">
+              <PhoneNumbers account={selectedAccount!} onUpdate={setSelectedAccount} />
+            </div>
+            <div key="notes" className="md:col-span-2">
+              <Notes account={selectedAccount!} onUpdate={setSelectedAccount} />
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

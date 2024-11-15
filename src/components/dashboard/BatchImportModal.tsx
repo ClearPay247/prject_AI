@@ -36,8 +36,7 @@ const standardFields = [
   { value: 'important_notes', label: 'Important Notes' }
 ];
 
-// const BatchImportModal: React.FC<BatchImportModalProps> = ({
-  const BatchImportModal: any = ({
+const BatchImportModal: React.FC<BatchImportModalProps> = ({
   isOpen,
   onClose,
   onConfirm,

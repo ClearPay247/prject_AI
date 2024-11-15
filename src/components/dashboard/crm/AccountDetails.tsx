@@ -44,7 +44,7 @@ export const AccountDetails: React.FC<AccountDetailsProps> = ({ account, onUpdat
           <label className="block text-sm font-medium text-gray-300 mb-2">Account #</label>
           <input
             type="text"
-            value={account?.accountNumber || ''}
+            value={account.accountNumber || ''}
             readOnly
             className="w-full bg-gray-900/50 text-white rounded-lg px-4 py-2 border border-gray-700"
           />
@@ -53,7 +53,7 @@ export const AccountDetails: React.FC<AccountDetailsProps> = ({ account, onUpdat
           <label className="block text-sm font-medium text-gray-300 mb-2">Client Account #</label>
           <input
             type="text"
-            value={account?.clientAccountNumber || ''}
+            value={account.clientAccountNumber || ''}
             readOnly
             className="w-full bg-gray-900/50 text-white rounded-lg px-4 py-2 border border-gray-700"
           />

@@ -20,7 +20,7 @@ interface BlandConfigProps {
   onLogApiCall: (log: string) => void;
 }
 
-const BlandConfig: React.FC<any> = ({
+const BlandConfig: React.FC<BlandConfigProps> = ({
   credentials,
   onUpdateCredentials,
   onTestConnection,

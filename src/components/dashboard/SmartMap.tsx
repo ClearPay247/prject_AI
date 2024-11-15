@@ -1,19 +1,11 @@
-import React, { useState, useCallback, useEffect } from "react";
-import { useDropzone } from "react-dropzone";
-import {
-  Upload,
-  AlertCircle,
-  Check,
-  Bot,
-  RefreshCw,
-  Edit2,
-  Building2,
-} from "lucide-react";
-import Papa from "papaparse";
-import { analyzeCSVFields } from "../../services/openai";
-import { getOpenAISettings } from "../../services/openai";
-import { accountService } from "../../lib/database";
-import { supabase } from "../../lib/supabase";
+import React, { useState, useCallback, useEffect } from 'react';
+import { useDropzone } from 'react-dropzone';
+import { Upload, AlertCircle, Check, Bot, RefreshCw, Edit2, Building2 } from 'lucide-react';
+import Papa from 'papaparse';
+import { analyzeCSVFields } from '../../services/openai';
+import { getOpenAISettings } from '../../services/openai';
+import { accountService } from '../../lib/database';
+import { supabase } from '../../lib/supabase';
 
 interface Client {
   id: string;
@@ -24,73 +16,57 @@ interface Client {
 
 const SmartMap: React.FC = () => {
   const [clients, setClients] = useState<Client[]>([]);
-  const [error, setError] = useState<any>("");
-  const [sucess, setSuccess] = useState<any>("");
-  const [importing, setImporting] = useState<any>("");
-  const [selectedClientId, setSelectedClientId] = useState<string>("");
-  const [csvData, setCsvData] = useState<any>([]);
-  const [csvFields, setCsvFields] = useState<any>([]);
-  const [mappedFields, setMappedFields] = useState<any>([]);
-  const [unmappedFields, setUnmappedFields] = useState<any>([]);
+  const [selectedClientId, setSelectedClientId] = useState<string>('');
   // ... other existing state variables ...
 
   useEffect(() => {
     fetchClients();
   }, []);
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    accept: {
-      "text/csv": [".csv"],
-      "application/vnd.ms-excel": [".csv"],
-    },
-    multiple: false,
-  });
+
   const fetchClients = async () => {
     try {
       const { data, error } = await supabase
-        .from("clients")
-        .select("id, name")
-        .order("name");
+        .from('clients')
+        .select('id, name')
+        .order('name');
 
       if (error) throw error;
       setClients(data || []);
     } catch (err) {
-      console.error("Failed to fetch clients:", err);
-      setError("Failed to load clients");
+      console.error('Failed to fetch clients:', err);
+      setError('Failed to load clients');
     }
   };
 
   const handleImport = async () => {
     if (!selectedClientId) {
-      setError("Please select a client before importing");
+      setError('Please select a client before importing');
       return;
     }
 
     setImporting(true);
-    setError("");
-    setSuccess("");
+    setError('');
+    setSuccess('');
 
     try {
       const mappings = mappedFields.reduce((acc, field) => {
-        if (field.dbField !== "skip") {
+        if (field.dbField !== 'skip') {
           acc[field.csvField] = field.dbField;
         }
         return acc;
       }, {} as Record<string, string>);
 
-      const accounts = csvData.map((row) => {
+      const accounts = csvData.map(row => {
         const account: any = {
-          client_id: selectedClientId, // Add client_id to each account
+          client_id: selectedClientId // Add client_id to each account
         };
         const phoneNumbers: string[] = [];
 
         Object.entries(mappings).forEach(([csvField, dbField]) => {
-          if (dbField == "phone_number") {
+          if (dbField === 'phone_number') {
             if (row[csvField]) phoneNumbers.push(row[csvField]);
           } else {
-            // account[dbField] = row[csvField];
-            if (dbField && account.hasOwnProperty(dbField) && row[csvField] !== undefined && row[csvField] !== null) {
-              account.dbField = row[csvField];
-            }
+            account[dbField] = row[csvField];
           }
         });
 
@@ -105,27 +81,23 @@ const SmartMap: React.FC = () => {
       });
 
       await accountService.batchImportAccounts(
-        accounts.map((a) => a.account),
+        accounts.map(a => a.account),
         phoneNumberMap
       );
 
-      setSuccess(
-        `Successfully imported ${accounts.length} accounts for ${
-          clients.find((c) => c.id === selectedClientId)?.name
-        }`
-      );
-
+      setSuccess(`Successfully imported ${accounts.length} accounts for ${
+        clients.find(c => c.id === selectedClientId)?.name
+      }`);
+      
       // Reset state after successful import
       setCsvData([]);
       setCsvFields([]);
       setMappedFields([]);
       setUnmappedFields([]);
-      setSelectedClientId("");
+      setSelectedClientId('');
     } catch (err) {
-      console.error("Import error:", err);
-      setError(
-        err instanceof Error ? err.message : "Failed to import accounts"
-      );
+      console.error('Import error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to import accounts');
     } finally {
       setImporting(false);
     }
@@ -144,7 +116,7 @@ const SmartMap: React.FC = () => {
             className="bg-gray-800/50 text-white rounded-lg px-4 py-2 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="">Select Client...</option>
-            {clients.map((client) => (
+            {clients.map(client => (
               <option key={client.id} value={client.id}>
                 {client.name}
               </option>
@@ -159,25 +131,21 @@ const SmartMap: React.FC = () => {
           Please select a client before proceeding with the import
         </div>
       ) : !csvData.length ? (
-        <div
-          {...getRootProps()}
-          className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors
-          ${
-            isDragActive
-              ? "border-blue-500 bg-blue-500/10"
-              : "border-gray-700 hover:border-blue-500/50"
-          }`}
-        >
+        <div {...getRootProps()} className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors
+          ${isDragActive ? 'border-blue-500 bg-blue-500/10' : 'border-gray-700 hover:border-blue-500/50'}`}>
           <input {...getInputProps()} />
           <Upload className="h-12 w-12 mx-auto mb-4 text-gray-400" />
           <p className="text-lg text-gray-300 mb-2">
             Drag & drop your CSV file here, or click to select
           </p>
-          <p className="text-sm text-gray-400">Maximum file size: 10MB</p>
+          <p className="text-sm text-gray-400">
+            Maximum file size: 10MB
+          </p>
         </div>
       ) : (
-        ""
-        // ... rest of the existing JSX for mapping interface ...
+        <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 text-blue-400">
+          Please select a client before proceeding with the import
+        </div>
       )}
     </div>
   );
