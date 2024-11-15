@@ -143,9 +143,7 @@ const SmartMap: React.FC = () => {
           </p>
         </div>
       ) : (
-        <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 text-blue-400">
-          Please select a client before proceeding with the import
-        </div>
+        // ... rest of the existing JSX for mapping interface ...
       )}
     </div>
   );

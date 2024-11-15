@@ -27,11 +27,11 @@ const App: React.FC = () => {
     try {
       // Handle hardcoded admin login
       if (email === 'admin@clearpay247.com' && password === 'CP247@dm1n2024!') {
-        const newAuthData: AuthData =  {
+        const newAuthData = {
           isLoggedIn: true,
           email,
-          role: "site_admin",
-          userId: "admin",
+          role: 'site_admin',
+          userId: 'admin',
           rememberMe
         };
         setAuthData(newAuthData);
@@ -43,7 +43,7 @@ const App: React.FC = () => {
 
       // Handle CRM admin login
       if (email === 'crm@clearpay247.com' && password === 'CP247crm@2024!') {
-        const newAuthData: AuthData = {
+        const newAuthData = {
           isLoggedIn: true,
           email,
           role: 'crm_admin',

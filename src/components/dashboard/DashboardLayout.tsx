@@ -31,7 +31,6 @@ interface DashboardLayoutProps {
   onLogout: () => void;
   isAdmin?: boolean;
   userEmail?: string;
-  userRole?: string;
 }
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ onLogout, isAdmin = false, userEmail = '' }) => {
